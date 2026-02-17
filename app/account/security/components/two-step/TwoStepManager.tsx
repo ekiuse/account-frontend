@@ -1,85 +1,83 @@
-"use client";
+"use client"
 
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { AuthenticatorSetup } from "./AuthenticatorSetup";
-import { BackupCodes } from "./BackupCodes";
+import { useState } from "react"
+import { Card } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { AuthenticatorSetup } from "./AuthenticatorSetup"
+import { BackupCodes } from "./BackupCodes"
+import { useTwoStep, TwoStepMethod } from "../../../../../features/security/two-step/useTwoStep"
 
 export function TwoStepManager() {
-    const [enabled, setEnabled] = useState(false);
-    const [setupOpen, setSetupOpen] = useState(false);
+    const {
+        isEnabled,
+        isLoading,
+        error,
+        qrCodeUrl,
+        manualKey,
+        backupCodes,
+        methodsEnabled,
+        setupTwoStep,
+        confirmCode,
+        turnOffTwoStep,
+        refreshBackupCodes,
+    } = useTwoStep()
+
+    const [isSettingUp, setIsSettingUp] = useState(false)
+
+    const handleEnable = async () => {
+        await setupTwoStep({
+            authenticator: true,
+            backupCodes: true,
+            email: true,
+            sms: false, // optional
+        })
+
+        setIsSettingUp(true)
+    }
 
     return (
-        <div className="space-y-6">
-            <div>
-                <h2 className="text-lg font-semibold">Two-Step Verification</h2>
-                <p className="text-sm text-muted-foreground">
-                    Add an extra layer of security to your account.
-                </p>
-            </div>
-
-            {/* Authenticator */}
-            <div className="flex justify-between items-center border p-4 rounded-lg">
+        <Card className="p-6 space-y-4">
+            <div className="flex items-center justify-between">
                 <div>
-                    <p className="font-medium">Authenticator App</p>
+                    <h3 className="text-lg font-semibold">Two-Step Verification</h3>
                     <p className="text-sm text-muted-foreground">
-                        Use an app like Google Authenticator
+                        Add an extra layer of security to your account.
                     </p>
                 </div>
 
-                {enabled ? (
-                    <Button variant="secondary">Configured</Button>
+                {isEnabled ? (
+                    <Button
+                        variant="destructive"
+                        onClick={turnOffTwoStep}
+                        disabled={isLoading}
+                    >
+                        Disable
+                    </Button>
                 ) : (
-                    <Button onClick={() => setSetupOpen(true)}>Set up</Button>
+                    <Button onClick={handleEnable} disabled={isLoading}>
+                        Enable
+                    </Button>
                 )}
             </div>
 
-            {/* Backup Codes */}
-            <Dialog>
-                <DialogTrigger asChild>
-                    <div className="flex justify-between items-center border p-4 rounded-lg cursor-pointer">
-                        <div>
-                            <p className="font-medium">Backup verification codes</p>
-                            <p className="text-sm text-muted-foreground">
-                                Use backup codes if you lose access
-                            </p>
-                        </div>
-                        <Button>Set up</Button>
-                    </div>
-                </DialogTrigger>
-                <DialogContent className="max-w-lg">
-                    <DialogHeader>
-                        <DialogTitle>Backup Codes</DialogTitle>
-                    </DialogHeader>
-                    <BackupCodes />
-                </DialogContent>
-            </Dialog>
+            {error && <p className="text-sm text-red-500">{error}</p>}
 
-            {/* Phone (disabled) */}
-            <div className="flex justify-between items-center border p-4 rounded-lg opacity-50">
-                <div>
-                    <p className="font-medium">Phone number</p>
-                    <p className="text-sm text-muted-foreground">
-                        Receive codes via SMS
-                    </p>
-                </div>
-                <Button disabled>Not available</Button>
-            </div>
-
-            {/* Turn off */}
-            <Button variant="destructive">Turn off two-step verification</Button>
-
-            {/* Authenticator Setup */}
-            {setupOpen && (
+            {!isEnabled && isSettingUp && qrCodeUrl && (
                 <AuthenticatorSetup
-                    onComplete={() => {
-                        setEnabled(true);
-                        setSetupOpen(false);
-                    }}
-                    onCancel={() => setSetupOpen(false)}
+                    qrCode={qrCodeUrl}
+                    manualKey={manualKey}
+                    onComplete={() => confirmCode("authenticator", "123456")}
+                    onCancel={() => setIsSettingUp(false)}
                 />
             )}
-        </div>
-    );
+
+            {isEnabled && (
+                <BackupCodes
+                    codes={backupCodes}
+                    onComplete={() => confirmCode("backupCodes", "CODE")}
+                    refresh={refreshBackupCodes}
+                />
+            )}
+        </Card>
+    )
 }
