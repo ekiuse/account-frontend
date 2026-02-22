@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Phone } from "../models/phone.model";
 import {
     fetchPhones,
@@ -9,38 +9,43 @@ import {
 } from "../services/phone.services";
 
 export const usePhoneManager = () => {
+    const mounted = useRef(true);
     const [phones, setPhones] = useState<Phone[]>([]);
     const [loading, setLoading] = useState(false);
-
     const [pendingNumber, setPendingNumber] = useState<string | null>(null);
     const [verificationCode, setVerificationCode] = useState<string | null>(null);
 
     useEffect(() => {
-        setLoading(true);
-        fetchPhones().then((data) => {
-            setPhones(data);
-            setLoading(false);
-        });
+        mounted.current = true;
+        const load = async () => {
+            if (!mounted.current) return;
+            setLoading(true);
+            try {
+                const data = await fetchPhones();
+                if (mounted.current) setPhones(data);
+            } finally {
+                if (mounted.current) setLoading(false);
+            }
+        };
+        load();
+        return () => { mounted.current = false; };
     }, []);
-
 
     const startPhoneVerification = async (number: string) => {
         setLoading(true);
-
-        const code = await sendVerificationCode(number);
-
-        setPendingNumber(number);
-        setVerificationCode(code);
-
-        setLoading(false);
+        try {
+            const code = await sendVerificationCode(number);
+            if (!mounted.current) return;
+            setPendingNumber(number);
+            setVerificationCode(code);
+        } finally {
+            if (mounted.current) setLoading(false);
+        }
     };
 
     const confirmPhone = async (code: string) => {
         if (!pendingNumber || !verificationCode) return false;
-
-        if (code !== verificationCode) {
-            return false;
-        }
+        if (code !== verificationCode) return false;
 
         const newPhone: Phone = {
             id: Date.now().toString(),
@@ -50,28 +55,36 @@ export const usePhoneManager = () => {
         };
 
         const saved = await addPhone(newPhone);
-
-        setPhones((prev) => [...prev, saved]);
-        setPendingNumber(null);
-        setVerificationCode(null);
+        if (mounted.current) setPhones((prev) => [...prev, saved]);
+        if (mounted.current) {
+            setPendingNumber(null);
+            setVerificationCode(null);
+        }
 
         return true;
     };
 
     const removePhone = async (id: string) => {
         setLoading(true);
-        await deletePhone(id);
-        setPhones((prev) => prev.filter((p) => p.id !== id));
-        setLoading(false);
+        try {
+            await deletePhone(id);
+            if (mounted.current) setPhones((prev) => prev.filter((p) => p.id !== id));
+        } finally {
+            if (mounted.current) setLoading(false);
+        }
     };
 
     const setPrimary = async (id: string) => {
         setLoading(true);
-        await makePrimaryPhone(id);
-        setPhones((prev) =>
-            prev.map((p) => ({ ...p, primary: p.id === id }))
-        );
-        setLoading(false);
+        try {
+            await makePrimaryPhone(id);
+            if (mounted.current)
+                setPhones((prev) =>
+                    prev.map((p) => ({ ...p, primary: p.id === id }))
+                );
+        } finally {
+            if (mounted.current) setLoading(false);
+        }
     };
 
     return {
