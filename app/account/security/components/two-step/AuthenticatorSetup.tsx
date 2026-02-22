@@ -3,6 +3,8 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import Image from "next/image";
+
 
 interface Props {
     qrUrl: string | null
@@ -64,10 +66,13 @@ export function AuthenticatorSetup({
 
                 {qrUrl && (
                     <div className="flex justify-center">
-                        <img
+
+                        <Image
                             src={qrUrl}
-                            alt="QR Code"
-                            className="border p-4 rounded-lg"
+                            alt="Authenticator QR code"
+                            width={128}
+                            height={128}
+                            className="rounded"
                         />
                     </div>
                 )}

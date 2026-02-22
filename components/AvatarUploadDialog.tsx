@@ -8,6 +8,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage } from "@/components/ui/avatar";
 import CameraCapture from "@/components/CameraCaptureDialog";
@@ -95,7 +96,7 @@ export default function AvatarUploadDialog() {
 
                             {preview && (
                                 <div className="flex justify-center">
-                                    <img
+                                    <Image
                                         src={preview}
                                         alt="preview"
                                         className="w-32 h-32 object-cover rounded-full border"
