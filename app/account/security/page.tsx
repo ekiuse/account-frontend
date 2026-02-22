@@ -107,7 +107,9 @@ export default function SecurityPage() {
                     <DialogHeader>
                         <DialogTitle>Two-Step Verification</DialogTitle>
                     </DialogHeader>
-                    <TwoStepManager />
+                    <TwoStepManager
+                        onClose={() => setOpenTwoStep(false)}
+                    />
                 </DialogContent>
             </Dialog>
 

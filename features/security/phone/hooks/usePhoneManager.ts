@@ -1,10 +1,19 @@
 import { useState, useEffect } from "react";
 import { Phone } from "../models/phone.model";
-import { fetchPhones, addPhone, deletePhone, makePrimaryPhone } from "../services/phone.services";
+import {
+    fetchPhones,
+    addPhone,
+    deletePhone,
+    makePrimaryPhone,
+    sendVerificationCode,
+} from "../services/phone.services";
 
 export const usePhoneManager = () => {
     const [phones, setPhones] = useState<Phone[]>([]);
     const [loading, setLoading] = useState(false);
+
+    const [pendingNumber, setPendingNumber] = useState<string | null>(null);
+    const [verificationCode, setVerificationCode] = useState<string | null>(null);
 
     useEffect(() => {
         setLoading(true);
@@ -14,11 +23,40 @@ export const usePhoneManager = () => {
         });
     }, []);
 
-    const addNewPhone = async (phone: Phone) => {
+    // مرحله اول: ارسال کد
+    const startPhoneVerification = async (number: string) => {
         setLoading(true);
-        const newPhone = await addPhone(phone);
-        setPhones((prev) => [...prev, newPhone]);
+
+        const code = await sendVerificationCode(number);
+
+        setPendingNumber(number);
+        setVerificationCode(code);
+
         setLoading(false);
+    };
+
+    // مرحله دوم: تایید کد
+    const confirmPhone = async (code: string) => {
+        if (!pendingNumber || !verificationCode) return false;
+
+        if (code !== verificationCode) {
+            return false;
+        }
+
+        const newPhone: Phone = {
+            id: Date.now().toString(),
+            number: pendingNumber,
+            primary: false,
+            verified: true,
+        };
+
+        const saved = await addPhone(newPhone);
+
+        setPhones((prev) => [...prev, saved]);
+        setPendingNumber(null);
+        setVerificationCode(null);
+
+        return true;
     };
 
     const removePhone = async (id: string) => {
@@ -37,5 +75,13 @@ export const usePhoneManager = () => {
         setLoading(false);
     };
 
-    return { phones, loading, addNewPhone, removePhone, setPrimary };
+    return {
+        phones,
+        loading,
+        removePhone,
+        setPrimary,
+        startPhoneVerification,
+        confirmPhone,
+        pendingNumber,
+    };
 };

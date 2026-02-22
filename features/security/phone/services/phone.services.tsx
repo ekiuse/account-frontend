@@ -1,12 +1,23 @@
 import { Phone } from "../models/phone.model";
 import { phonesMock } from "../mocks/phone.mock";
 
+// fetch
 export const fetchPhones = async (): Promise<Phone[]> =>
     new Promise((res) => setTimeout(() => res([...phonesMock]), 300));
 
-export const addPhone = async (newPhone: Phone): Promise<Phone> => {
-    phonesMock.push(newPhone);
-    return new Promise((res) => setTimeout(() => res(newPhone), 300));
+// fake send sms
+export const sendVerificationCode = async (number: string): Promise<string> => {
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+
+    console.log("Fake SMS Code:", code); // فقط برای تست
+
+    return new Promise((res) => setTimeout(() => res(code), 500));
+};
+
+// add verified phone
+export const addPhone = async (phone: Phone): Promise<Phone> => {
+    phonesMock.push(phone);
+    return new Promise((res) => setTimeout(() => res(phone), 300));
 };
 
 export const deletePhone = async (id: string): Promise<void> => {

@@ -1,83 +1,138 @@
 "use client"
 
-import { useState } from "react"
-import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { useTwoStep } from "@/features/security/two-step/hooks/useTwoStep"
 import { AuthenticatorSetup } from "./AuthenticatorSetup"
-import { BackupCodes } from "./BackupCodes"
-import { useTwoStep, TwoStepMethod } from "../../../../../features/security/two-step/useTwoStep"
+import { BackupCodesSetup } from "./BackupCodesSetup"
+import { EmailSetup } from "./EmailSetup"
+import { SmsSetup } from "./SmsSetup"
+import { useState } from "react"
 
-export function TwoStepManager() {
+type Step = "manage" | "email" | "sms" | "backup" | "app"
+
+export function TwoStepManager({ onClose }: { onClose: () => void }) {
+    const [step, setStep] = useState<Step>("manage")
+
+    // دریافت state های لازم از hook
     const {
-        isEnabled,
-        isLoading,
-        error,
+        methods,
         qrCodeUrl,
-        manualKey,
-        backupCodes,
-        methodsEnabled,
-        setupTwoStep,
-        confirmCode,
-        turnOffTwoStep,
-        refreshBackupCodes,
+        secret,
+        startAuthenticatorSetup,
+        verifyMethod,
+        activate,
     } = useTwoStep()
 
-    const [isSettingUp, setIsSettingUp] = useState(false)
+    if (step === "email")
+        return (
+            <EmailSetup
+                onSuccess={() => {
+                    verifyMethod("email", "123456")
+                    setStep("manage")
+                }}
+                onBack={() => setStep("manage")}
+            />
+        )
 
-    const handleEnable = async () => {
-        await setupTwoStep({
-            authenticator: true,
-            backupCodes: true,
-            email: true,
-            sms: false, // optional
-        })
+    if (step === "sms")
+        return (
+            <SmsSetup
+                onSuccess={() => {
+                    verifyMethod("sms", "123456")
+                    setStep("manage")
+                }}
+                onBack={() => setStep("manage")}
+            />
+        )
 
-        setIsSettingUp(true)
-    }
+    if (step === "backup")
+        return (
+            <BackupCodesSetup
+                onSuccess={() => {
+                    verifyMethod("backupCodes", "123456")
+                    setStep("manage")
+                }}
+                onBack={() => setStep("manage")}
+            />
+        )
+
+    if (step === "app")
+        return (
+            <AuthenticatorSetup
+                qrUrl={qrCodeUrl} // مستقیم از hook استفاده می‌کنیم
+                secret={secret}
+                onStart={() => startAuthenticatorSetup("user@example.com")}
+                onVerify={async (code) => {
+                    await verifyMethod("authenticator", code)
+                    setStep("manage")
+                }}
+                onBack={() => setStep("manage")}
+            />
+        )
+
+    const activeCount = Object.values(methods).filter(
+        (v) => v === "verified"
+    ).length
 
     return (
-        <Card className="p-6 space-y-4">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h3 className="text-lg font-semibold">Two-Step Verification</h3>
-                    <p className="text-sm text-muted-foreground">
-                        Add an extra layer of security to your account.
-                    </p>
-                </div>
+        <div className="space-y-4">
+            <MethodRow
+                title="Email"
+                enabled={methods.email === "verified"}
+                onClick={() => setStep("email")}
+            />
+            <MethodRow
+                title="SMS"
+                enabled={methods.sms === "verified"}
+                onClick={() => setStep("sms")}
+            />
+            <MethodRow
+                title="Backup Codes"
+                enabled={methods.backupCodes === "verified"}
+                onClick={() => setStep("backup")}
+            />
+            <MethodRow
+                title="Authenticator App"
+                enabled={methods.authenticator === "verified"}
+                onClick={() => setStep("app")}
+            />
 
-                {isEnabled ? (
-                    <Button
-                        variant="destructive"
-                        onClick={turnOffTwoStep}
-                        disabled={isLoading}
-                    >
-                        Disable
-                    </Button>
-                ) : (
-                    <Button onClick={handleEnable} disabled={isLoading}>
-                        Enable
-                    </Button>
-                )}
-            </div>
+            <Button
+                disabled={activeCount < 3}
+                className="w-full mt-4"
+                onClick={() => {
+                    activate()
+                    onClose()
+                }}
+            >
+                Activate
+            </Button>
+        </div>
+    )
+}
 
-            {error && <p className="text-sm text-red-500">{error}</p>}
-
-            {!isEnabled && isSettingUp && qrCodeUrl && (
-                <AuthenticatorSetup
-                    qrCode={qrCodeUrl}
-                    manualKey={manualKey}
-                    onComplete={() => confirmCode("authenticator", "123456")}
-                    onCancel={() => setIsSettingUp(false)}
-                />
+function MethodRow({
+    title,
+    enabled,
+    onClick,
+}: {
+    title: string
+    enabled: boolean
+    onClick: () => void
+}) {
+    return (
+        <div className="flex justify-between border p-3 rounded">
+            <span>{title}</span>
+            {!enabled && (
+                <Button size="sm" onClick={onClick}>
+                    Enable
+                </Button>
             )}
-
-            {isEnabled && (
-                <BackupCodes
-                    codes={backupCodes}
-                    onComplete={() => confirmCode("backupCodes", "CODE")}
-                    refresh={refreshBackupCodes}
-                />
+            {enabled && (
+                <span className="text-green-600 text-sm">
+                    Enabled
+                </span>
             )}
-        </Card>
+        </div>
     )
 }
