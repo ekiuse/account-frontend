@@ -3,6 +3,6 @@ export type Session = {
     device: string;
     location: string;
     ip: string;
-    lastActive: number; // timestamp
+    lastActive: number;
     isCurrent: boolean;
 };

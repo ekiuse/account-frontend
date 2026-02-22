@@ -1,6 +1,6 @@
 import { Profile } from "../models/profile.model";
 
-// Fake API calls (می‌تونی بعداً به واقعی تغییر بدی)
+
 export async function fetchProfile(): Promise<Profile> {
     return new Promise((resolve) => {
         setTimeout(() => {

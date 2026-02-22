@@ -23,7 +23,7 @@ export const usePhoneManager = () => {
         });
     }, []);
 
-    // مرحله اول: ارسال کد
+
     const startPhoneVerification = async (number: string) => {
         setLoading(true);
 
@@ -35,7 +35,6 @@ export const usePhoneManager = () => {
         setLoading(false);
     };
 
-    // مرحله دوم: تایید کد
     const confirmPhone = async (code: string) => {
         if (!pendingNumber || !verificationCode) return false;
 

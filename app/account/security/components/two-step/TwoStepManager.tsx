@@ -13,7 +13,7 @@ type Step = "manage" | "email" | "sms" | "backup" | "app"
 export function TwoStepManager({ onClose }: { onClose: () => void }) {
     const [step, setStep] = useState<Step>("manage")
 
-    // دریافت state های لازم از hook
+
     const {
         methods,
         qrCodeUrl,
@@ -59,7 +59,7 @@ export function TwoStepManager({ onClose }: { onClose: () => void }) {
     if (step === "app")
         return (
             <AuthenticatorSetup
-                qrUrl={qrCodeUrl} // مستقیم از hook استفاده می‌کنیم
+                qrUrl={qrCodeUrl}
                 secret={secret}
                 onStart={() => startAuthenticatorSetup("user@example.com")}
                 onVerify={async (code) => {
