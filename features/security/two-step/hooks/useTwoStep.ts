@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef, useEffect } from "react"
 import {
     generateAuthenticatorSetup,
     verifyAuthenticatorCode,
@@ -17,10 +17,10 @@ export type TwoStepMethod =
 type MethodStatus = "idle" | "enabled" | "verified"
 
 export function useTwoStep() {
+    const mounted = useRef(true)
+
     const [isEnabled, setIsEnabled] = useState(false)
-    const [methods, setMethods] = useState<
-        Record<TwoStepMethod, MethodStatus>
-    >({
+    const [methods, setMethods] = useState<Record<TwoStepMethod, MethodStatus>>({
         email: "idle",
         sms: "idle",
         backupCodes: "idle",
@@ -33,26 +33,35 @@ export function useTwoStep() {
     const [error, setError] = useState<string | null>(null)
     const [isLoading, setIsLoading] = useState(false)
 
+    useEffect(() => {
+        mounted.current = true
+        return () => { mounted.current = false }
+    }, [])
+
     const startAuthenticatorSetup = async (email: string) => {
+        if (!mounted.current) return
         setIsLoading(true)
         setError(null)
 
         try {
             const res = await generateAuthenticatorSetup(email)
+            if (!mounted.current) return
+
             setSecret(res.secret)
             setQrCodeUrl(res.qrCodeUrl)
-            setMethods((p) => ({ ...p, authenticator: "enabled" }))
-        } catch (err: any) {
-            setError(err.message)
+            setMethods((prev) => ({ ...prev, authenticator: "enabled" }))
+        } catch (err: unknown) {
+            if (!mounted.current) return
+            if (err instanceof Error) setError(err.message)
+            else setError("Unknown error")
         } finally {
+            if (!mounted.current) return
             setIsLoading(false)
         }
     }
 
-    const verifyMethod = async (
-        method: TwoStepMethod,
-        code?: string
-    ) => {
+    const verifyMethod = async (method: TwoStepMethod, code?: string) => {
+        if (!mounted.current) return
         setIsLoading(true)
         setError(null)
 
@@ -64,33 +73,34 @@ export function useTwoStep() {
 
             if (method === "backupCodes") {
                 const res = await generateBackupCodes()
-                setBackupCodes(res.codes)
+                if (mounted.current) setBackupCodes(res.codes)
             }
 
-            setMethods((p) => ({
-                ...p,
-                [method]: "verified",
-            }))
-        } catch (err: any) {
-            setError(err.message)
+            if (mounted.current) {
+                setMethods((prev) => ({
+                    ...prev,
+                    [method]: "verified",
+                }))
+            }
+        } catch (err: unknown) {
+            if (!mounted.current) return
+            if (err instanceof Error) setError(err.message)
+            else setError("Unknown error")
         } finally {
+            if (!mounted.current) return
             setIsLoading(false)
         }
     }
 
     const activate = () => {
-        const verifiedCount = Object.values(methods).filter(
-            (v) => v === "verified"
-        ).length
-
+        const verifiedCount = Object.values(methods).filter((v) => v === "verified").length
         if (verifiedCount < 3) return
-
         setIsEnabled(true)
     }
 
     const turnOff = async () => {
         await disableTwoStep()
-        setIsEnabled(false)
+        if (mounted.current) setIsEnabled(false)
     }
 
     return {
